@@ -159,16 +159,17 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	u8 u8aSendBuffer[500];
+	u8 u8aSendBuffer[1500];
 	char szErrbuf[PCAP_ERRBUF_SIZE];
 	int nCaptureHeaderLength = 0, n80211HeaderLength = 0, nLinkEncap = 0;
 	int nOrdinal = 0, r, nDelay = 100000;
-	int nRateIndex = 0, retval, bytes;
+	int nRateIndex = 8, retval, bytes;
 	pcap_t *ppcap = NULL;
 	struct bpf_program bpfprogram;
 	char * szProgram = "", fBrokenSocket = 0;
 	u16 u16HeaderLen;
 	char szHostname[PATH_MAX];
+	int pkt_cnt = 0;
 
 	if (gethostname(szHostname, sizeof (szHostname) - 1)) {
 		perror("unable to get hostname");
@@ -286,7 +287,7 @@ main(int argc, char *argv[])
 			sizeof (u8aRadiotapHeader));
 		if (flagMarkWithFCS)
 			pu8[OFFSET_FLAGS] |= IEEE80211_RADIOTAP_F_FCS;
-		nRate = pu8[OFFSET_RATE] = u8aRatesToUse[nRateIndex++];
+		nRate = pu8[OFFSET_RATE] = u8aRatesToUse[nRateIndex];
 		if (nRateIndex >= sizeof (u8aRatesToUse))
 			nRateIndex = 0;
 		pu8 += sizeof (u8aRadiotapHeader);
@@ -297,13 +298,14 @@ main(int argc, char *argv[])
 		pu8 += sprintf((char *)pu8,
 		    "Packetspammer %02d"
 		    "broadcast packet"
-		    "#%05d -- :-D --%s ----",
+		    "#%05d -- :-D --%s ----000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 		    nRate/2, nOrdinal++, szHostname);
 		r = pcap_inject(ppcap, u8aSendBuffer, pu8 - u8aSendBuffer);
 		if (r != (pu8-u8aSendBuffer)) {
 			perror("Trouble injecting packet");
 			return (1);
 		}
+		printf("sending packet %d length: %d\n", ++pkt_cnt, pu8 - u8aSendBuffer);
 		if (nDelay)
 			usleep(nDelay);
 	}
