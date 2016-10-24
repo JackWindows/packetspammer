@@ -60,11 +60,11 @@ static const u8 u8aRadiotapHeader[] = {
 
 /* Penumbra IEEE80211 header */
 
-static const u8 u8aIeeeHeader[] = {
+static u8 u8aIeeeHeader[] = {
 	0x08, 0x01, 0x00, 0x00,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,	//Receiver Address
 	0x13, 0x22, 0x33, 0x44, 0x55, 0x66,	//Destination Address
-	0x13, 0x22, 0x33, 0x44, 0x55, 0x66,	//Transmitter Address
+	0x13, 0x22, 0x33, 0x44, 0x55, 0x66,	//Source Address
 	0x10, 0x86,
 };
 
@@ -204,10 +204,14 @@ main(int argc, char *argv[])
 			{ "delay", required_argument, NULL, 'd' },
 			{ "fcs", no_argument, &flagMarkWithFCS, 1 },
 			{ "help", no_argument, &flagHelp, 1 },
+			{ "src", required_argument, NULL, 's' },
+			{ "dst", required_argument, NULL, 't' },
 			{ 0, 0, 0, 0 }
 		};
-		int c = getopt_long(argc, argv, "d:hf",
+		int c = getopt_long(argc, argv, "d:hfs:t:",
 			optiona, &nOptionIndex);
+
+		u8 mac[6];
 
 		if (c == -1)
 			break;
@@ -224,6 +228,50 @@ main(int argc, char *argv[])
 
 		case 'f': // mark as FCS attached
 			flagMarkWithFCS = 1;
+			break;
+
+		case 's': // set source mac address
+			for (int i = 0; i < 6; i++) {
+				int pos = i * 3;
+				u8 tmp;
+				if (optarg[pos] <= '9' && optarg[pos] >= '0') {
+					tmp = optarg[pos] - '0';
+				}
+				else {
+					tmp = optarg[pos] - 'a' + 10;
+				}
+				if (optarg[pos + 1] <= '9' && optarg[pos + 1] >= '0') {
+					tmp = tmp * 16 + optarg[pos + 1] - '0';
+				}
+				else {
+					tmp = tmp * 16 + optarg[pos + 1] - 'a' + 10;
+				}
+				mac[i] = tmp;
+			}
+			memcpy(u8aIeeeHeader + 16, mac, sizeof(mac));
+			break;
+
+		case 't': // set destination mac address
+			printf("%s\n", optarg);
+			for (int i = 0; i < 6; i++) {
+				int pos = i * 3;
+				u8 tmp;
+				if (optarg[pos] <= '9' && optarg[pos] >= '0') {
+					tmp = optarg[pos] - '0';
+				}
+				else {
+					tmp = optarg[pos] - 'a' + 10;
+				}
+				if (optarg[pos + 1] <= '9' && optarg[pos + 1] >= '0') {
+					tmp = tmp * 16 + optarg[pos + 1] - '0';
+				}
+				else {
+					tmp = tmp * 16 + optarg[pos + 1] - 'a' + 10;
+				}
+				mac[i] = tmp;
+			}
+			memcpy(u8aIeeeHeader + 4, mac, sizeof(mac));
+			memcpy(u8aIeeeHeader + 10, mac, sizeof(mac));
 			break;
 
 		default:
