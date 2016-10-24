@@ -1,5 +1,5 @@
 packetspammer: packetspammer.c
-	mips-openwrt-linux-gcc -Wall -Wno-unused-variable radiotap.c packetspammer.c -o packetspammer -lpcap
+	mips-openwrt-linux-gcc -Wall -Wno-unused-variable radiotap.c packetspammer.c -o packetspammer -lpcap -ldl -lpthread
 	#mips-openwrt-linux-gcc -Wall -Werror radiotap.c packetspammer.c -o packetspammer -lpcap
 
 clean:

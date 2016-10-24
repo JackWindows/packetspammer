@@ -20,6 +20,7 @@
 
 #include "packetspammer.h"
 #include "radiotap.h"
+#include <pthread.h>
 
 /* wifi bitrate to use in 500kHz units */
 
@@ -78,7 +79,25 @@ typedef struct  {
 	int m_nRadiotapFlags;
 } __attribute__((packed)) PENUMBRA_RADIOTAP_DATA;
 
+typedef struct {
+	int sent_byte;
+	int sleep_interval;
+} statistics;
 
+void *print_speed(void *stats_ptr) {
+	puts("sub-thread initialized");
+	statistics *stats = (statistics *) stats_ptr;
+	int s_byte, e_byte;
+	double speed;
+	static int sent_byte;
+	while (1) {
+		s_byte = stats->sent_byte;
+		usleep(stats->sleep_interval * 1000000);
+		e_byte = stats->sent_byte;
+		speed = (e_byte - s_byte) / (float)(stats->sleep_interval * 1024);
+		printf("sending rate: %.2fKB/s\n", speed);
+	}
+}
 
 int flagHelp = 0, flagMarkWithFCS = 0;
 
@@ -273,6 +292,12 @@ main(int argc, char *argv[])
 
 	memset(u8aSendBuffer, 0, sizeof (u8aSendBuffer));
 
+	statistics *stats = malloc(sizeof(statistics));
+	stats->sent_byte = 0;
+	stats->sleep_interval = 1;
+	pthread_t speed_statistic_thread;
+	pthread_create(&speed_statistic_thread, NULL, print_speed, (void *)stats);
+
 	while (!fBrokenSocket) {
 		u8 * pu8 = u8aSendBuffer;
 		struct pcap_pkthdr * ppcapPacketHeader = NULL;
@@ -301,16 +326,17 @@ main(int argc, char *argv[])
 		    "#%05d -- :-D --%s ----000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 		    nRate/2, nOrdinal++, szHostname);
 		r = pcap_inject(ppcap, u8aSendBuffer, pu8 - u8aSendBuffer);
+		stats->sent_byte += pu8 - u8aSendBuffer;
 		if (r != (pu8-u8aSendBuffer)) {
 			perror("Trouble injecting packet");
 			return (1);
 		}
-		printf("sending packet %d length: %d\n", ++pkt_cnt, pu8 - u8aSendBuffer);
+		//printf("sending packet %d length: %d\n", ++pkt_cnt, pu8 - u8aSendBuffer);
 		if (nDelay)
 			usleep(nDelay);
 	}
 
 
-
+	pthread_exit(NULL);
 	return (0);
 }
