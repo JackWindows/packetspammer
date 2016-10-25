@@ -43,16 +43,18 @@ static const u8 u8aRatesToUse[] = {
 
 static const u8 u8aRadiotapHeader[] = {
 
-	0x00, 0x00, // <-- radiotap version
+	0x00, // <-- radiotap version
+	0x00, // <-- pad
 	0x19, 0x00, // <- radiotap header length
 	0x6f, 0x08, 0x00, 0x00, // <-- bitmap
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // <-- timestamp
 	0x00, // <-- flags (Offset +0x10)
-	0x6c, // <-- rate (0ffset +0x11)
-	0x71, 0x09, 0xc0, 0x00, // <-- channel
-	0xde, // <-- antsignal
+	0x16, // <-- rate (0ffset +0x11)
+	0x8f, 0x09, // <-- channel frequency
+	0xc0, 0x00, // <-- channel flags
+	0x00, // <-- antsignal
 	0x00, // <-- antnoise
-	0x01, // <-- antenna
+	0x00, // <-- antenna
 
 };
 #define	OFFSET_FLAGS 0x10
@@ -182,7 +184,7 @@ main(int argc, char *argv[])
 	char szErrbuf[PCAP_ERRBUF_SIZE];
 	int nCaptureHeaderLength = 0, n80211HeaderLength = 0, nLinkEncap = 0;
 	int nOrdinal = 0, r, nDelay = 100000;
-	int nRateIndex = 8, retval, bytes;
+	int retval, bytes;
 	pcap_t *ppcap = NULL;
 	struct bpf_program bpfprogram;
 	char * szProgram = "", fBrokenSocket = 0;
@@ -249,6 +251,7 @@ main(int argc, char *argv[])
 				mac[i] = tmp;
 			}
 			memcpy(u8aIeeeHeader + 16, mac, sizeof(mac));
+			memcpy(u8aIeeeHeader + 10, mac, sizeof(mac));
 			break;
 
 		case 't': // set destination mac address
@@ -271,7 +274,6 @@ main(int argc, char *argv[])
 				mac[i] = tmp;
 			}
 			memcpy(u8aIeeeHeader + 4, mac, sizeof(mac));
-			memcpy(u8aIeeeHeader + 10, mac, sizeof(mac));
 			break;
 
 		default:
@@ -360,9 +362,7 @@ main(int argc, char *argv[])
 			sizeof (u8aRadiotapHeader));
 		if (flagMarkWithFCS)
 			pu8[OFFSET_FLAGS] |= IEEE80211_RADIOTAP_F_FCS;
-		nRate = pu8[OFFSET_RATE] = u8aRatesToUse[nRateIndex];
-		if (nRateIndex >= sizeof (u8aRatesToUse))
-			nRateIndex = 0;
+		nRate = 22;
 		pu8 += sizeof (u8aRadiotapHeader);
 
 		memcpy(pu8, u8aIeeeHeader, sizeof (u8aIeeeHeader));
