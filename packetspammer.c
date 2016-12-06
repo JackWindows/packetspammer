@@ -84,20 +84,23 @@ typedef struct  {
 typedef struct {
 	int sent_byte;
 	int sleep_interval;
+	int sent_packet;
 } statistics;
 
 void *print_speed(void *stats_ptr) {
 	puts("sub-thread initialized");
 	statistics *stats = (statistics *) stats_ptr;
-	int s_byte, e_byte;
+	int s_byte, e_byte, s_packet, e_packet;
 	double speed;
 	static int sent_byte;
 	while (1) {
 		s_byte = stats->sent_byte;
+		s_packet = stats->sent_packet;
 		usleep(stats->sleep_interval * 1000000);
 		e_byte = stats->sent_byte;
+		e_packet = stats->sent_packet;
 		speed = (e_byte - s_byte) / (float)(stats->sleep_interval * 1024);
-		printf("sending rate: %.2fKB/s\n", speed);
+		printf("sending rate: %.2fKB/s %dpps\n", speed, e_packet - s_packet);
 	}
 }
 
@@ -344,6 +347,7 @@ main(int argc, char *argv[])
 
 	statistics *stats = malloc(sizeof(statistics));
 	stats->sent_byte = 0;
+	stats->sent_packet = 0;
 	stats->sleep_interval = 1;
 	pthread_t speed_statistic_thread;
 	pthread_create(&speed_statistic_thread, NULL, print_speed, (void *)stats);
@@ -375,6 +379,7 @@ main(int argc, char *argv[])
 		    nRate/2, nOrdinal++, szHostname);
 		r = pcap_inject(ppcap, u8aSendBuffer, pu8 - u8aSendBuffer);
 		stats->sent_byte += pu8 - u8aSendBuffer;
+		stats->sent_packet++;
 		if (r != (pu8-u8aSendBuffer)) {
 			perror("Trouble injecting packet");
 			return (1);
