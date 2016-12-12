@@ -182,10 +182,11 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	u8 u8aSendBuffer[1500];
+	u8 u8aSendBuffer[2500];
 	char szErrbuf[PCAP_ERRBUF_SIZE];
 	int nCaptureHeaderLength = 0, n80211HeaderLength = 0, nLinkEncap = 0;
 	int nOrdinal = 0, r, nDelay = 100000;
+	u32 frame_len = 1000;
 	pcap_t *ppcap = NULL;
 	struct bpf_program bpfprogram;
 	char * szProgram = "", fBrokenSocket = 0;
@@ -207,9 +208,10 @@ main(int argc, char *argv[])
 			{ "help", no_argument, &flagHelp, 1 },
 			{ "src", required_argument, NULL, 's' },
 			{ "dst", required_argument, NULL, 't' },
+			{ "len", required_argument, NULL, 'l' },
 			{ 0, 0, 0, 0 }
 		};
-		int c = getopt_long(argc, argv, "d:hfs:t:",
+		int c = getopt_long(argc, argv, "d:hfs:t:l:",
 			optiona, &nOptionIndex);
 
 		u8 mac[6];
@@ -225,6 +227,10 @@ main(int argc, char *argv[])
 
 		case 'd': // delay
 			nDelay = atoi(optarg);
+			break;
+
+		case 'l': // frame length
+			frame_len = atoi(optarg);
 			break;
 
 		case 'f': // mark as FCS attached
@@ -363,19 +369,21 @@ main(int argc, char *argv[])
 	memcpy(pu8, u8aIeeeHeader, sizeof (u8aIeeeHeader));
 	pu8 += sizeof (u8aIeeeHeader);
 
-	pu8 += sprintf((char *)pu8,
+	sprintf((char *)pu8,
 	    "Packetspammer %02d"
 	    "broadcast packet"
-	    "#%05d -- :-D --%s ----0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+	    "#%05d -- :-D --%s ----",
 	    nRate/2, nOrdinal++, szHostname);
 
+	pu8 += frame_len - sizeof(u8aIeeeHeader) - 4;	// 4 bytes of FCS, not included since calculated by driver
+	if (flagMarkWithFCS)
+		pu8 += 4;	// in the case that FCS is already included
 	u32 send_length = pu8 - u8aSendBuffer;
-	u32 frame_length = send_length - sizeof(u8aRadiotapHeader) + 4;	//4 is the FCS length
-	printf("packet length: %ubytes\n", frame_length);
+	printf("packet length: %ubytes\n", frame_len);
 
 	while (!fBrokenSocket) {
 		r = pcap_inject(ppcap, u8aSendBuffer, send_length);
-		stats->sent_byte += frame_length;
+		stats->sent_byte += frame_len;
 		stats->sent_packet++;
 		if (r != send_length) {
 			perror("Trouble injecting packet");
