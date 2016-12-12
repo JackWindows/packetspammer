@@ -92,7 +92,6 @@ void *print_speed(void *stats_ptr) {
 	statistics *stats = (statistics *) stats_ptr;
 	int s_byte, e_byte, s_packet, e_packet;
 	double speed;
-	static int sent_byte;
 	while (1) {
 		s_byte = stats->sent_byte;
 		s_packet = stats->sent_packet;
@@ -187,13 +186,10 @@ main(int argc, char *argv[])
 	char szErrbuf[PCAP_ERRBUF_SIZE];
 	int nCaptureHeaderLength = 0, n80211HeaderLength = 0, nLinkEncap = 0;
 	int nOrdinal = 0, r, nDelay = 100000;
-	int retval, bytes;
 	pcap_t *ppcap = NULL;
 	struct bpf_program bpfprogram;
 	char * szProgram = "", fBrokenSocket = 0;
-	u16 u16HeaderLen;
 	char szHostname[PATH_MAX];
-	int pkt_cnt = 0;
 
 	if (gethostname(szHostname, sizeof (szHostname) - 1)) {
 		perror("unable to get hostname");
@@ -354,11 +350,7 @@ main(int argc, char *argv[])
 
 	while (!fBrokenSocket) {
 		u8 * pu8 = u8aSendBuffer;
-		struct pcap_pkthdr * ppcapPacketHeader = NULL;
-		struct ieee80211_radiotap_iterator rti;
-		PENUMBRA_RADIOTAP_DATA prd;
-		u8 * pu8Payload = u8aSendBuffer;
-		int n, nRate;
+		int nRate;
 
 		// transmit
 
