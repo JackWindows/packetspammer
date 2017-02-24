@@ -103,7 +103,7 @@ void *print_speed(void *stats_ptr) {
 	}
 }
 
-int flagHelp = 0, flagMarkWithFCS = 0;
+int flagHelp = 0, flagMarkWithFCS = 0, flagSingle = 0;
 
 void
 Dump(u8 * pu8, int nLength)
@@ -170,6 +170,7 @@ usage(void)
 	    "-t/--dst <mac> set destination mac address\n"
 	    "-l/--len <length> set frame length (include FCS)\n\n"
 	    "-f/--fcs           Mark as having FCS (CRC) already\n"
+		"--single			Only inject a single packet\n"
 	    "                   (pkt ends with 4 x sacrificial - chars)\n"
 	    "Example:\n"
 	    "  echo -n mon0 > /sys/class/ieee80211/phy0/add_iface\n"
@@ -212,6 +213,7 @@ main(int argc, char *argv[])
 			{ "src", required_argument, NULL, 's' },
 			{ "dst", required_argument, NULL, 't' },
 			{ "len", required_argument, NULL, 'l' },
+			{ "single", no_argument, &flagSingle, 1 },
 			{ 0, 0, 0, 0 }
 		};
 		int c = getopt_long(argc, argv, "d:hfs:t:l:",
@@ -392,11 +394,13 @@ main(int argc, char *argv[])
 			perror("Trouble injecting packet");
 			return (1);
 		}
+		if (flagSingle)
+			break;
 		if (nDelay)
 			usleep(nDelay);
 	}
 
-
+	pthread_cancel(speed_statistic_thread);
 	pthread_exit(NULL);
 	return (0);
 }
