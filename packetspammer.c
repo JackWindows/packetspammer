@@ -103,7 +103,7 @@ void *print_speed(void *stats_ptr) {
 	}
 }
 
-int flagHelp = 0, flagMarkWithFCS = 0, flagSingle = 0;
+int flagHelp = 0, flagMarkWithFCS = 0;
 
 void
 Dump(u8 * pu8, int nLength)
@@ -170,7 +170,7 @@ usage(void)
 	    "-t/--dst <mac> set destination mac address\n"
 	    "-l/--len <length> set frame length (include FCS)\n\n"
 	    "-f/--fcs           Mark as having FCS (CRC) already\n"
-		"--single			Only inject a single packet\n"
+		"-c/--count <num>	Number of packet to send (0 for infinity)\n"
 	    "                   (pkt ends with 4 x sacrificial - chars)\n"
 	    "Example:\n"
 	    "  echo -n mon0 > /sys/class/ieee80211/phy0/add_iface\n"
@@ -191,6 +191,7 @@ main(int argc, char *argv[])
 	int nCaptureHeaderLength = 0, n80211HeaderLength = 0, nLinkEncap = 0;
 	int nOrdinal = 0, r, nDelay = 100000;
 	u32 frame_len = 1000;
+	u32 count = 0;
 	pcap_t *ppcap = NULL;
 	struct bpf_program bpfprogram;
 	char * szProgram = "", fBrokenSocket = 0;
@@ -213,10 +214,10 @@ main(int argc, char *argv[])
 			{ "src", required_argument, NULL, 's' },
 			{ "dst", required_argument, NULL, 't' },
 			{ "len", required_argument, NULL, 'l' },
-			{ "single", no_argument, &flagSingle, 1 },
+			{ "count", required_argument, NULL, 'c' },
 			{ 0, 0, 0, 0 }
 		};
-		int c = getopt_long(argc, argv, "d:hfs:t:l:",
+		int c = getopt_long(argc, argv, "d:hfs:t:l:c:",
 			optiona, &nOptionIndex);
 
 		u8 mac[6];
@@ -240,6 +241,10 @@ main(int argc, char *argv[])
 
 		case 'f': // mark as FCS attached
 			flagMarkWithFCS = 1;
+			break;
+
+		case 'c': // number of packets to send
+			count = atoi(optarg);
 			break;
 
 		case 's': // set source mac address
@@ -386,6 +391,7 @@ main(int argc, char *argv[])
 	u32 send_length = pu8 - u8aSendBuffer;
 	printf("packet length: %ubytes\n", frame_len);
 
+	u32 sent_packet = 0;
 	while (!fBrokenSocket) {
 		r = pcap_inject(ppcap, u8aSendBuffer, send_length);
 		stats->sent_byte += frame_len;
@@ -394,10 +400,10 @@ main(int argc, char *argv[])
 			perror("Trouble injecting packet");
 			return (1);
 		}
-		if (flagSingle)
-			break;
 		if (nDelay)
 			usleep(nDelay);
+		if (++sent_packet == count)
+			break;
 	}
 
 	pthread_cancel(speed_statistic_thread);
