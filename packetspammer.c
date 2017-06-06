@@ -99,7 +99,8 @@ void *print_speed(void *stats_ptr) {
 		e_byte = stats->sent_byte;
 		e_packet = stats->sent_packet;
 		speed = (e_byte - s_byte) / (float)(stats->sleep_interval * 1024);
-		printf("sending rate: %.2fKB/s %dpps\n", speed, e_packet - s_packet);
+		printf("sending rate: %.2fKB/s %dpps\n", speed,
+				(e_packet - s_packet) / stats->sleep_interval);
 	}
 }
 
@@ -172,6 +173,7 @@ usage(void)
 	    "-f/--fcs           Mark as having FCS (CRC) already\n"
 		"-c/--count <num>	Number of packet to send (0 for infinity)\n"
 	    "                   (pkt ends with 4 x sacrificial - chars)\n"
+		"-i/--intval <int>  the frequency to print rate stats (default 1s)\n"
 	    "Example:\n"
 	    "  echo -n mon0 > /sys/class/ieee80211/phy0/add_iface\n"
 	    "  iwconfig mon0 mode monitor\n"
@@ -189,7 +191,7 @@ main(int argc, char *argv[])
 	u8 u8aSendBuffer[2500];
 	char szErrbuf[PCAP_ERRBUF_SIZE];
 	int nCaptureHeaderLength = 0, n80211HeaderLength = 0, nLinkEncap = 0;
-	int nOrdinal = 0, r, nDelay = 100000;
+	int nOrdinal = 0, r, nDelay = 100000, RATE_STAT_INTERVAL = 1;
 	u32 frame_len = 1000;
 	u32 count = 0;
 	pcap_t *ppcap = NULL;
@@ -215,9 +217,10 @@ main(int argc, char *argv[])
 			{ "dst", required_argument, NULL, 't' },
 			{ "len", required_argument, NULL, 'l' },
 			{ "count", required_argument, NULL, 'c' },
+			{ "intval", required_argument, NULL, 'i' },
 			{ 0, 0, 0, 0 }
 		};
-		int c = getopt_long(argc, argv, "d:hfs:t:l:c:",
+		int c = getopt_long(argc, argv, "d:hfs:t:l:c:i:",
 			optiona, &nOptionIndex);
 
 		u8 mac[6];
@@ -245,6 +248,10 @@ main(int argc, char *argv[])
 
 		case 'c': // number of packets to send
 			count = atoi(optarg);
+			break;
+
+		case 'i': // freqency of printing speed stats
+			RATE_STAT_INTERVAL = atoi(optarg);
 			break;
 
 		case 's': // set source mac address
@@ -360,7 +367,7 @@ main(int argc, char *argv[])
 	statistics *stats = malloc(sizeof(statistics));
 	stats->sent_byte = 0;
 	stats->sent_packet = 0;
-	stats->sleep_interval = 1;
+	stats->sleep_interval = RATE_STAT_INTERVAL;
 	pthread_t speed_statistic_thread;
 	pthread_create(&speed_statistic_thread, NULL, print_speed, (void *)stats);
 
