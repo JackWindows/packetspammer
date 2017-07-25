@@ -99,8 +99,8 @@ void *print_speed(void *stats_ptr) {
 		e_byte = stats->sent_byte;
 		e_packet = stats->sent_packet;
 		speed = (e_byte - s_byte) / (float)(stats->sleep_interval * 1024);
-		printf("sending rate: %.2fKB/s %dpps\n", speed,
-				(e_packet - s_packet) / stats->sleep_interval);
+		printf("sending rate: %.2fKB/s %.2fpps\n", speed,
+				(e_packet - s_packet) / (float)stats->sleep_interval);
 	}
 }
 
